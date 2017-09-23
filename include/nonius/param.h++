@@ -74,9 +74,9 @@ class param {
         model(T v) : value(std::move(v)) {}
         std::istream& pull(std::istream& is) override { is >> value; return is; }
         std::ostream& push(std::ostream& os) const override { os << value; return os; }
-        bool eq(param const& y) const override { return operate<bool>(detail::eq_fn{}, value, y.as<T>()); }
-        param plus(param const& y) const override { return operate<T>(detail::plus_fn{}, value, y.as<T>()); }
-        param mult(param const& y) const override { return operate<T>(detail::mult_fn{}, value, y.as<T>()); }
+        bool eq(param const& y) const override { return this->template operate<bool>(detail::eq_fn{}, value, y.template as<T>()); }
+        param plus(param const& y) const override { return this->template operate<T>(detail::plus_fn{}, value, y.template as<T>()); }
+        param mult(param const& y) const override { return this->template operate<T>(detail::mult_fn{}, value, y.template as<T>()); }
         param clone() const override { return value; }
 
         template <typename R, typename Op, typename ...Args>
