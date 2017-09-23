@@ -84,13 +84,12 @@ namespace cpptempl {
     // various typedefs
 
     // data classes
-    class Data;
-    class DataValue;
-    class DataList;
-    class DataMap;
+    struct Data;
+    struct DataValue;
+    struct DataList;
+    struct DataMap;
 
-    class data_ptr {
-    public:
+    struct data_ptr {
         data_ptr() {}
         template<typename T> data_ptr(const T& data) {
             this->operator =(data);
@@ -112,8 +111,7 @@ namespace cpptempl {
     };
     typedef std::vector<data_ptr> data_list;
 
-    class data_map {
-    public:
+    struct data_map {
         data_ptr& operator [](const std::string& key);
         bool empty();
         bool has(const std::string& key);
@@ -132,47 +130,45 @@ namespace cpptempl {
     }
 
     // token classes
-    class Token;
+    struct Token;
     typedef std::shared_ptr<Token> token_ptr;
     typedef std::vector<token_ptr> token_vector;
 
     // Custom exception class for library errors
-    class TemplateException : public std::runtime_error {
-    public:
+    struct TemplateException : std::runtime_error {
         using std::runtime_error::runtime_error;
     };
 
     // Data types used in templates
-    class Data {
-    public:
+    struct Data {
         virtual bool empty() = 0;
         virtual std::string getvalue();
         virtual data_list& getlist();
         virtual data_map& getmap();
     };
 
-    class DataValue : public Data {
-        std::string m_value;
-    public:
+    struct DataValue : Data {
         DataValue(std::string value) : m_value(value) {}
         std::string getvalue();
         bool empty();
+    private:
+        std::string m_value;
     };
 
-    class DataList : public Data {
-        data_list m_items;
-    public:
+    struct DataList : Data {
         DataList(const data_list& items) : m_items(items) {}
         data_list& getlist();
         bool empty();
+    private:
+        data_list m_items;
     };
 
-    class DataMap : public Data {
-        data_map m_items;
-    public:
+    struct DataMap : Data {
         DataMap(const data_map& items) : m_items(items) {}
         data_map& getmap();
         bool empty();
+    private:
+        data_map m_items;
     };
 
     inline data_ptr::data_ptr(DataValue* data) : ptr(data) {}
@@ -206,8 +202,7 @@ namespace cpptempl {
 
     // Template tokens
     // base class for all token types
-    class Token {
-    public:
+    struct Token {
         virtual TokenType gettype() = 0;
         virtual void gettext(std::ostream& stream, data_map& data) = 0;
         virtual void set_children(token_vector& children);
@@ -215,56 +210,56 @@ namespace cpptempl {
     };
 
     // normal text
-    class TokenText : public Token {
-        std::string m_text;
-    public:
+    struct TokenText : Token {
         TokenText(std::string text) : m_text(text) {}
         TokenType gettype();
         void gettext(std::ostream& stream, data_map& data);
+    private:
+        std::string m_text;
     };
 
     // variable
-    class TokenVar : public Token {
-        std::string m_key;
-    public:
+    struct TokenVar : Token {
         TokenVar(std::string key) : m_key(key) {}
         TokenType gettype();
         void gettext(std::ostream& stream, data_map& data);
+    private:
+        std::string m_key;
     };
 
     // for block
-    class TokenFor : public Token {
-    public:
-        std::string m_key;
-        std::string m_val;
-        token_vector m_children;
+    struct TokenFor : Token {
         TokenFor(std::string expr);
         TokenType gettype();
         void gettext(std::ostream& stream, data_map& data);
         void set_children(token_vector& children);
         token_vector& get_children();
+    private:
+        std::string m_key;
+        std::string m_val;
+        token_vector m_children;
     };
 
     // if block
-    class TokenIf : public Token {
-    public:
-        std::string m_expr;
-        token_vector m_children;
+    struct TokenIf : Token {
         TokenIf(std::string expr) : m_expr(expr) {}
         TokenType gettype();
         void gettext(std::ostream& stream, data_map& data);
         bool is_true(std::string expr, data_map& data);
         void set_children(token_vector& children);
         token_vector& get_children();
+    private:
+        std::string m_expr;
+        token_vector m_children;
     };
 
     // end of block
-    class TokenEnd : public Token { // end of control block
-        std::string m_type;
-    public:
+    struct TokenEnd : Token { // end of control block
         TokenEnd(std::string text) : m_type(text) {}
         TokenType gettype();
         void gettext(std::ostream& stream, data_map& data);
+    private:
+        std::string m_type;
     };
 
     std::string gettext(token_ptr token, data_map& data);
