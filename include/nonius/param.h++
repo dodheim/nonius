@@ -57,8 +57,8 @@ struct mult_fn {
 } // namespace detail
 
 class param {
-    struct interface {
-        virtual ~interface() = default;
+    struct interface_ {
+        virtual ~interface_() = default;
         virtual std::istream& pull(std::istream&) = 0;
         virtual std::ostream& push(std::ostream&) const = 0;
         virtual bool eq(param const&) const = 0;
@@ -68,7 +68,7 @@ class param {
     };
 
     template <typename T>
-    struct model : interface {
+    struct model : interface_ {
         T value;
 
         model(T v) : value(std::move(v)) {}
@@ -122,7 +122,7 @@ private:
         }
     }
 
-    std::shared_ptr<interface> impl_;
+    std::shared_ptr<interface_> impl_;
 };
 
 struct parameters : std::unordered_map<std::string, param> {
