@@ -21,17 +21,14 @@
 #include <boost/math/distributions/normal.hpp>
 
 #include <algorithm>
-#include <functional>
 #include <iterator>
 #include <vector>
-#include <array>
 #include <random>
 #include <numeric>
 #include <tuple>
 #include <cmath>
 #include <utility>
 #include <future>
-#include <cstddef>
 
 namespace nonius {
     namespace detail {

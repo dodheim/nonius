@@ -14,6 +14,7 @@
 #ifndef NONIUS_DETAIL_ESCAPE_HPP
 #define NONIUS_DETAIL_ESCAPE_HPP
 
+#include <unordered_map>
 #include <string>
 #include <algorithm>
 #include <iterator>

@@ -26,10 +26,16 @@
 #include <nonius/detail/noexcept.h++>
 
 #include <algorithm>
+#include <unordered_map>
+#include <vector>
+#include <string>
 #include <set>
+#include <iterator>
+#include <functional>
 #include <exception>
 #include <utility>
 #include <regex>
+#include <cstddef>
 
 namespace nonius {
     namespace detail {

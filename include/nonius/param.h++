@@ -16,10 +16,18 @@
 
 #include <nonius/detail/meta.h++>
 #include <nonius/detail/noexcept.h++>
-#include <boost/lexical_cast.hpp>
+
+#include <sstream>
+#include <ios>
+#include <istream>
+#include <ostream>
 #include <unordered_map>
-#include <typeinfo>
+#include <string>
 #include <memory>
+#include <iterator>
+#include <exception>
+#include <utility>
+#include <type_traits>
 
 namespace nonius {
 

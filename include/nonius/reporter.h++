@@ -24,12 +24,12 @@
 
 #include <vector>
 #include <string>
-#include <ios>
-#include <ostream>
 #include <fstream>
 #include <iostream>
 #include <memory>
 #include <unordered_map>
+#include <functional>
+#include <utility>
 #include <exception>
 
 namespace nonius {

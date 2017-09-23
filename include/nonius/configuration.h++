@@ -15,9 +15,11 @@
 #define NONIUS_CONFIGURATION_HPP
 
 #include <nonius/param.h++>
+
 #include <boost/optional.hpp>
+
 #include <string>
-#include <vector>
+#include <cstddef>
 
 namespace nonius {
     struct run_configuration {
@@ -34,7 +36,6 @@ namespace nonius {
     };
 
     struct configuration {
-    public:
         int samples = 100;
         double confidence_interval = 0.95;
         int resamples = 100000;

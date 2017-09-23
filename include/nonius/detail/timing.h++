@@ -17,9 +17,6 @@
 #include <nonius/clock.h++>
 #include <nonius/detail/complete_invoke.h++>
 
-#include <tuple>
-#include <type_traits>
-
 namespace nonius {
     template <typename Duration, typename Result>
     struct timing {

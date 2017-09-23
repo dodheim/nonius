@@ -23,6 +23,7 @@
 
 #include <utility>
 #include <type_traits>
+#include <exception>
 
 namespace nonius {
     namespace detail {

@@ -23,13 +23,13 @@
 #include <nonius/detail/escape.h++>
 
 #include <ios>
+#include <ostream>
 #include <iomanip>
 #include <algorithm>
 #include <string>
-#include <iterator>
 #include <limits>
 #include <unordered_map>
-#include <vector>
+#include <utility>
 #include <exception>
 
 namespace nonius {

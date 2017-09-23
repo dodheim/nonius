@@ -17,13 +17,14 @@
 #include <nonius/detail/mismatch.h++>
 
 #include <string>
+#include <ios>
 #include <unordered_map>
 #include <vector>
 #include <algorithm>
 #include <ostream>
 #include <iomanip>
 #include <tuple>
-#include <functional>
+#include <utility>
 
 namespace nonius {
     namespace detail {

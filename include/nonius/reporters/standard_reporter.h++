@@ -22,13 +22,10 @@
 #include <nonius/clock.h++>
 #include <nonius/detail/pretty_print.h++>
 
-#include <ratio>
 #include <ios>
-#include <iostream>
 #include <iomanip>
-#include <sstream>
 #include <string>
-#include <memory>
+#include <exception>
 
 namespace nonius {
     struct standard_reporter : reporter {

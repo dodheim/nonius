@@ -27,9 +27,9 @@
 #include <nonius/detail/unique_name.h++>
 
 #include <algorithm>
-#include <functional>
 #include <string>
 #include <vector>
+#include <utility>
 #include <cmath>
 
 namespace nonius {

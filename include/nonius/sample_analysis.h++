@@ -20,8 +20,8 @@
 
 #include <algorithm>
 #include <vector>
-#include <string>
 #include <iterator>
+#include <utility>
 
 namespace nonius {
     template <typename Duration>

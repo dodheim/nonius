@@ -27,12 +27,12 @@
 #include <iomanip>
 #include <algorithm>
 #include <string>
-#include <iterator>
-#include <limits>
 #include <unordered_map>
 #include <vector>
 
-#include <fstream>
+#include <ostream>
+#include <exception>
+#include <cmath>
 
 namespace nonius {
     struct html_reporter : reporter {

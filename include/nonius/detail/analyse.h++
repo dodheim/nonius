@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <iterator>
 #include <vector>
+#include <utility>
 
 namespace nonius {
     namespace detail {

@@ -23,14 +23,10 @@
 
 #include <nonius/detail/compiler.h++>
 
-#include <ratio>
 #include <ios>
-#include <iostream>
 #include <iomanip>
 #include <sstream>
 #include <string>
-#include <memory>
-#include <utility>
 
 namespace nonius {
     namespace detail {

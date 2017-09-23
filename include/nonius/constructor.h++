@@ -15,6 +15,7 @@
 #define NONIUS_CONSTRUCTOR_HPP
 
 #include <type_traits>
+#include <utility>
 
 namespace nonius {
     namespace detail {

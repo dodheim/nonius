@@ -23,9 +23,11 @@
 
 #include <ios>
 #include <iomanip>
+#include <ostream>
 #include <algorithm>
 #include <string>
 #include <iterator>
+#include <exception>
 #include <limits>
 #include <unordered_map>
 #include <vector>

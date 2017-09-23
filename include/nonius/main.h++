@@ -17,15 +17,19 @@
 #include <nonius/nonius.h++>
 #include <nonius/detail/argparse.h++>
 
+#include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string.hpp>
 
+#include <ios>
 #include <vector>
 #include <string>
 #include <stdexcept>
 #include <exception>
 #include <iostream>
 #include <iomanip>
+#include <algorithm>
 #include <utility>
+#include <cstddef>
 
 namespace nonius {
     namespace detail {
