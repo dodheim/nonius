@@ -44,15 +44,18 @@ namespace nonius {
         inline std::string units_for_magnitude(double magnitude) {
             if(magnitude <= 1.e0) return "s";
             else if(magnitude <= 1.e3) return "ms";
-            else if(magnitude <= 1.e6) return "μs";
+            else if(magnitude <= 1.e6) return
+#if defined(NONIUS_MSVC) || (defined(NONIUS_CLANG) && defined(_MSC_VER))
+                    "us"
+#else
+                    "μs"
+#endif
+                ;
             else return "ns";
         }
         inline std::string pretty_duration(fp_seconds secs) {
             auto magnitude = get_magnitude(secs);
             auto units = units_for_magnitude(magnitude);
-#ifdef NONIUS_MSVC
-            if(units == "μs") units = "us";
-#endif
             std::ostringstream ss;
             ss << std::setprecision(ss.precision());
             ss << (secs.count() * magnitude) << ' ' << units;
