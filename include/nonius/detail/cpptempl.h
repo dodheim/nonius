@@ -75,7 +75,7 @@
 #include <sstream>
 
 #include <memory>
-#include <exception>
+#include <stdexcept>
 #include <utility>
 
 #include <cstddef>
@@ -137,14 +137,9 @@ namespace cpptempl {
     typedef std::vector<token_ptr> token_vector;
 
     // Custom exception class for library errors
-    class TemplateException : public std::exception {
+    class TemplateException : public std::runtime_error {
     public:
-        TemplateException(std::string reason) : m_reason(std::move(reason)) {}
-        char const* what() const NONIUS_NOEXCEPT override {
-            return m_reason.c_str();
-        }
-    private:
-        std::string m_reason;
+        using std::runtime_error::runtime_error;
     };
 
     // Data types used in templates
