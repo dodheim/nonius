@@ -16,7 +16,23 @@
 
 #include <nonius/param.h++>
 
-#include <boost/optional.hpp>
+#if !defined(NONIUS_USE_BOOST_OPTIONAL) && defined(__has_include)
+#   if __has_include(<optional>) && (__cplusplus > 201402L || (defined(_MSVC_LANG) && _MSVC_LANG > 201402L))
+#      include <optional>
+#      define NONIUS_OPTIONAL_NS std
+#   elif __has_include(<experimental/optional>) && __cplusplus >= 201402L
+#      include <experimental/optional>
+#      define NONIUS_OPTIONAL_NS std::experimental
+#   elif __has_include(<boost/optional.hpp>)
+#      include <boost/optional.hpp>
+#      define NONIUS_OPTIONAL_NS boost
+#   else
+#      error "Missing <optional>"
+#   endif
+#else
+#   include <boost/optional.hpp>
+#   define NONIUS_OPTIONAL_NS boost
+#endif
 
 #include <string>
 #include <cstddef>
@@ -32,7 +48,7 @@ namespace nonius {
 
     struct param_configuration {
         parameters map;
-        boost::optional<run_configuration> run;
+        NONIUS_OPTIONAL_NS::optional<run_configuration> run;
     };
 
     struct configuration {
