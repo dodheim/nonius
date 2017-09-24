@@ -30,7 +30,7 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 // IN THE SOFTWARE.
 // 
-// Modified by: Martinho Fernandes
+// Modified by: Martinho Fernandes, Adam Merz
 // 
 // Usage
 // =======================
@@ -50,7 +50,7 @@
 //  person["name"] = make_data("Bob");
 //  person["occupation"] = make_data("Plumber");
 //  data_map data;
-//  data["person"] = make_data(person);
+//  data["person"] = make_data(std::move(person));
 // 
 //  std::string result = parse(templ_text, data);
 
@@ -74,6 +74,7 @@
 #include <ostream>
 #include <sstream>
 
+#include <iterator>
 #include <memory>
 #include <stdexcept>
 #include <type_traits>
@@ -92,52 +93,57 @@ namespace cpptempl {
     struct DataMap;
 
     struct data_ptr {
-        data_ptr() {}
+        data_ptr() NONIUS_NOEXCEPT = default;
+        data_ptr(const data_ptr&) NONIUS_NOEXCEPT = default;
+        data_ptr(data_ptr&&) NONIUS_NOEXCEPT = default;
         template<typename T, typename std::enable_if<!std::is_same<T, data_ptr>::value, int>::type = 0>
         data_ptr(const T& data) {
-            this->operator =(data);
+            *this = data;
         }
-        data_ptr(DataValue* data);
-        data_ptr(DataList* data);
-        data_ptr(DataMap* data);
-        data_ptr(const data_ptr& data) {
-            ptr = data.ptr;
-        }
+        data_ptr(std::shared_ptr<DataValue> data) NONIUS_NOEXCEPT;
+        data_ptr(std::shared_ptr<DataList> data) NONIUS_NOEXCEPT;
+        data_ptr(std::shared_ptr<DataMap> data) NONIUS_NOEXCEPT;
 
-        data_ptr& operator =(const data_ptr&);
+        data_ptr& operator =(const data_ptr&) NONIUS_NOEXCEPT = default;
+        data_ptr& operator =(data_ptr&&) NONIUS_NOEXCEPT = default;
         template<typename T, typename std::enable_if<!std::is_same<T, data_ptr>::value, int>::type = 0>
-        void operator =(const T& data);
+        data_ptr& operator =(const T& data);
+        data_ptr& operator =(std::string data);
+        data_ptr& operator =(data_map data);
 
-        void push_back(const data_ptr& data);
-        virtual ~data_ptr() {}
-        Data* operator ->() {
+        template<typename T, typename std::enable_if<std::is_constructible<data_ptr, T&&>::value, int>::type = 0>
+        data_ptr& emplace_back(T&& data);
+        void push_back(data_ptr data) {
+            emplace_back(std::move(data));
+        }
+
+        virtual ~data_ptr() NONIUS_NOEXCEPT = default;
+        Data* operator ->() NONIUS_NOEXCEPT {
             return ptr.get();
         }
     private:
         std::shared_ptr<Data> ptr;
     };
-    typedef std::vector<data_ptr> data_list;
+    using data_list = std::vector<data_ptr>;
 
     struct data_map {
         data_ptr& operator [](const std::string& key);
-        bool empty();
-        bool has(const std::string& key);
+        bool empty() const NONIUS_NOEXCEPT;
+        bool has(const std::string& key) const;
     private:
         std::unordered_map<std::string, data_ptr> data;
     };
 
-    template<> void data_ptr::operator =(const std::string& data);
-    template<> void data_ptr::operator =(const data_map& data);
     template<typename T, typename std::enable_if<!std::is_same<T, data_ptr>::value, int>::type>
-    void data_ptr::operator =(const T& data) {
+    data_ptr& data_ptr::operator =(const T& data) {
         std::string data_str = boost::lexical_cast<std::string>(data);
-        this->operator =(data_str);
+        return *this = std::move(data_str);
     }
 
     // token classes
     struct Token;
-    typedef std::shared_ptr<Token> token_ptr;
-    typedef std::vector<token_ptr> token_vector;
+    using token_ptr = std::shared_ptr<Token>;
+    using token_vector = std::vector<token_ptr>;
 
     // Custom exception class for library errors
     struct TemplateException : std::runtime_error {
@@ -146,56 +152,56 @@ namespace cpptempl {
 
     // Data types used in templates
     struct Data {
-        virtual bool empty() = 0;
-        virtual std::string getvalue();
+        virtual bool empty() const NONIUS_NOEXCEPT = 0;
+        virtual std::string& getvalue();
         virtual data_list& getlist();
         virtual data_map& getmap();
     };
 
     struct DataValue : Data {
-        DataValue(std::string value) : m_value(value) {}
-        std::string getvalue();
-        bool empty();
+        DataValue(std::string value) NONIUS_NOEXCEPT : m_value(std::move(value)) {}
+        std::string& getvalue() override;
+        bool empty() const NONIUS_NOEXCEPT override;
     private:
         std::string m_value;
     };
 
     struct DataList : Data {
-        DataList(const data_list& items) : m_items(items) {}
-        data_list& getlist();
-        bool empty();
+        DataList(data_list items) : m_items(std::move(items)) {}
+        data_list& getlist() override;
+        bool empty() const NONIUS_NOEXCEPT override;
     private:
         data_list m_items;
     };
 
     struct DataMap : Data {
-        DataMap(const data_map& items) : m_items(items) {}
-        data_map& getmap();
-        bool empty();
+        DataMap(data_map items) : m_items(std::move(items)) {}
+        data_map& getmap() override;
+        bool empty() const NONIUS_NOEXCEPT override;
     private:
         data_map m_items;
     };
 
-    inline data_ptr::data_ptr(DataValue* data) : ptr(data) {}
-    inline data_ptr::data_ptr(DataList* data) : ptr(data) {}
-    inline data_ptr::data_ptr(DataMap* data) : ptr(data) {}
+    inline data_ptr::data_ptr(std::shared_ptr<DataValue> data) NONIUS_NOEXCEPT : ptr(std::move(data)) {}
+    inline data_ptr::data_ptr(std::shared_ptr<DataList> data) NONIUS_NOEXCEPT : ptr(std::move(data)) {}
+    inline data_ptr::data_ptr(std::shared_ptr<DataMap> data) NONIUS_NOEXCEPT : ptr(std::move(data)) {}
 
     // convenience functions for making data objects
     inline data_ptr make_data(std::string val) {
-        return data_ptr(new DataValue(val));
+        return {std::make_shared<DataValue>(std::move(val))};
     }
-    inline data_ptr make_data(data_list& val) {
-        return data_ptr(new DataList(val));
+    inline data_ptr make_data(data_list val) {
+        return {std::make_shared<DataList>(std::move(val))};
     }
-    inline data_ptr make_data(data_map& val) {
-        return data_ptr(new DataMap(val));
+    inline data_ptr make_data(data_map val) {
+        return {std::make_shared<DataMap>(std::move(val))};
     }
 
     // get a data value from a data map
     // e.g. foo.bar => data["foo"]["bar"]
-    data_ptr parse_val(std::string key, data_map& data);
+    data_ptr parse_val(const std::string& key, data_map& data);
 
-    typedef enum {
+    enum TokenType {
         TOKEN_TYPE_NONE,
         TOKEN_TYPE_TEXT,
         TOKEN_TYPE_VAR,
@@ -203,42 +209,42 @@ namespace cpptempl {
         TOKEN_TYPE_FOR,
         TOKEN_TYPE_ENDIF,
         TOKEN_TYPE_ENDFOR,
-    } TokenType;
+    };
 
     // Template tokens
     // base class for all token types
     struct Token {
-        virtual TokenType gettype() = 0;
-        virtual void gettext(std::ostream& stream, data_map& data) = 0;
-        virtual void set_children(token_vector& children);
+        virtual TokenType gettype() const NONIUS_NOEXCEPT = 0;
+        virtual void gettext(std::ostream& stream, data_map& data) const = 0;
+        virtual void set_children(token_vector children);
         virtual token_vector& get_children();
     };
 
     // normal text
     struct TokenText : Token {
-        TokenText(std::string text) : m_text(text) {}
-        TokenType gettype();
-        void gettext(std::ostream& stream, data_map& data);
+        TokenText(std::string text) NONIUS_NOEXCEPT : m_text(std::move(text)) {}
+        TokenType gettype() const NONIUS_NOEXCEPT override;
+        void gettext(std::ostream& stream, data_map& data) const override;
     private:
         std::string m_text;
     };
 
     // variable
     struct TokenVar : Token {
-        TokenVar(std::string key) : m_key(key) {}
-        TokenType gettype();
-        void gettext(std::ostream& stream, data_map& data);
+        TokenVar(std::string key) NONIUS_NOEXCEPT : m_key(std::move(key)) {}
+        TokenType gettype() const NONIUS_NOEXCEPT override;
+        void gettext(std::ostream& stream, data_map& data) const override;
     private:
         std::string m_key;
     };
 
     // for block
     struct TokenFor : Token {
-        TokenFor(std::string expr);
-        TokenType gettype();
-        void gettext(std::ostream& stream, data_map& data);
-        void set_children(token_vector& children);
-        token_vector& get_children();
+        TokenFor(const std::string& expr);
+        TokenType gettype() const NONIUS_NOEXCEPT override;
+        void gettext(std::ostream& stream, data_map& data) const override;
+        void set_children(token_vector children) override;
+        token_vector& get_children() override;
     private:
         std::string m_key;
         std::string m_val;
@@ -247,12 +253,12 @@ namespace cpptempl {
 
     // if block
     struct TokenIf : Token {
-        TokenIf(std::string expr) : m_expr(expr) {}
-        TokenType gettype();
-        void gettext(std::ostream& stream, data_map& data);
-        bool is_true(std::string expr, data_map& data);
-        void set_children(token_vector& children);
-        token_vector& get_children();
+        TokenIf(std::string expr) NONIUS_NOEXCEPT : m_expr(std::move(expr)) {}
+        TokenType gettype() const NONIUS_NOEXCEPT override;
+        void gettext(std::ostream& stream, data_map& data) const override;
+        bool is_true(const std::string& expr, data_map& data) const;
+        void set_children(token_vector children) override;
+        token_vector& get_children() override;
     private:
         std::string m_expr;
         token_vector m_children;
@@ -260,14 +266,14 @@ namespace cpptempl {
 
     // end of block
     struct TokenEnd : Token { // end of control block
-        TokenEnd(std::string text) : m_type(text) {}
-        TokenType gettype();
-        void gettext(std::ostream& stream, data_map& data);
+        TokenEnd(std::string text) NONIUS_NOEXCEPT : m_type(std::move(text)) {}
+        TokenType gettype() const NONIUS_NOEXCEPT override;
+        void gettext(std::ostream& stream, data_map& data) const override;
     private:
         std::string m_type;
     };
 
-    std::string gettext(token_ptr token, data_map& data);
+    std::string gettext(const token_ptr& token, data_map& data);
 
     void parse_tree(token_vector& tokens, token_vector& tree, TokenType until=TOKEN_TYPE_NONE);
     token_vector& tokenize(std::string text, token_vector& tokens);
@@ -275,7 +281,6 @@ namespace cpptempl {
     // The big daddy. Pass in the template and data,
     // and get out a completed doc.
     void parse(std::ostream& stream, std::string templ_text, data_map& data);
-    std::string parse(std::string templ_text, data_map& data);
     std::string parse(std::string templ_text, data_map& data);
 
 // *********** Implementation ************
@@ -288,37 +293,33 @@ namespace cpptempl {
     inline data_ptr& data_map::operator [](const std::string& key) {
         return data[key];
     }
-    inline bool data_map::empty() {
+    inline bool data_map::empty() const NONIUS_NOEXCEPT {
         return data.empty();
     }
-    inline bool data_map::has(const std::string& key) {
+    inline bool data_map::has(const std::string& key) const {
         return data.find(key) != data.end();
     }
 
     // data_ptr
-    inline data_ptr& data_ptr::operator =(const data_ptr& data) {
-        ptr = data.ptr;
-        return *this;
+    inline data_ptr& data_ptr::operator =(std::string data) {
+        return *this = make_data(std::move(data));
     }
-    template<>
-    inline void data_ptr::operator =(const std::string& data) {
-        ptr.reset(new DataValue(data));
-    }
-    template<>
-    inline void data_ptr::operator =(const data_map& data) {
-        ptr.reset(new DataMap(data));
+    inline data_ptr& data_ptr::operator =(data_map data) {
+        return *this = make_data(std::move(data));
     }
 
-    inline void data_ptr::push_back(const data_ptr& data) {
+    template<typename T, typename std::enable_if<std::is_constructible<data_ptr, T&&>::value, int>::type>
+    inline data_ptr& data_ptr::emplace_back(T&& data) {
         if (!ptr) {
-            ptr.reset(new DataList(data_list()));
+            *this = make_data(data_list());
         }
         data_list& list = ptr->getlist();
-        list.push_back(data);
+        list.emplace_back(std::forward<T>(data));
+        return list.back();
     }
 
     // base data
-    inline std::string Data::getvalue() {
+    inline std::string& Data::getvalue() {
         throw TemplateException("Data item is not a value");
     }
     inline data_list& Data::getlist() {
@@ -329,10 +330,10 @@ namespace cpptempl {
     }
 
     // data value
-    inline std::string DataValue::getvalue() {
+    inline std::string& DataValue::getvalue() {
         return m_value;
     }
-    inline bool DataValue::empty() {
+    inline bool DataValue::empty() const NONIUS_NOEXCEPT {
         return m_value.empty();
     }
 
@@ -340,7 +341,7 @@ namespace cpptempl {
     inline data_list& DataList::getlist() {
         return m_items;
     }
-    inline bool DataList::empty() {
+    inline bool DataList::empty() const NONIUS_NOEXCEPT {
         return m_items.empty();
     }
 
@@ -348,33 +349,33 @@ namespace cpptempl {
     inline data_map& DataMap::getmap() {
         return m_items;
     }
-    inline bool DataMap::empty() {
+    inline bool DataMap::empty() const NONIUS_NOEXCEPT {
         return m_items.empty();
     }
 
     //////////////////////////////////////////////////////////////////////////
     // parse_val
     //////////////////////////////////////////////////////////////////////////
-    inline data_ptr parse_val(std::string key, data_map& data) {
+    inline data_ptr parse_val(const std::string& key, data_map& data) {
         // quoted string
         if (key[0] == '\"') {
-            return make_data(boost::trim_copy_if(key, [](char c) { return c == '"'; }));
+            return make_data(boost::trim_copy_if(key, [](char c) { return c == '\"'; }));
         }
 
         // check for dotted notation, i.e [foo.bar]
-        size_t index = key.find(".");
-        if (index == std::string::npos) {
+        std::size_t const index = key.find('.');
+        if (index == key.npos) {
             if (!data.has(key)) {
-                return make_data("{$" + key + "}");
+                return make_data("{$" + key + '}');
             }
             return data[key];
         }
 
-        std::string sub_key = key.substr(0, index);
+        std::string const sub_key = key.substr(0, index);
         if (!data.has(sub_key)) {
-            return make_data("{$" + key + "}");
+            return make_data("{$" + key + '}');
         }
-        data_ptr item = data[sub_key];
+        data_ptr& item = data[sub_key];
         return parse_val(key.substr(index + 1), item->getmap());
     }
 
@@ -383,7 +384,7 @@ namespace cpptempl {
     //////////////////////////////////////////////////////////////////////////
 
     // defaults, overridden by subclasses with children
-    inline void Token::set_children(token_vector&) {
+    inline void Token::set_children(token_vector) {
         throw TemplateException("This token type cannot have children");
     }
     inline token_vector& Token::get_children() {
@@ -391,72 +392,72 @@ namespace cpptempl {
     }
 
     // TokenText
-    inline TokenType TokenText::gettype() {
+    inline TokenType TokenText::gettype() const NONIUS_NOEXCEPT {
         return TOKEN_TYPE_TEXT;
     }
-    inline void TokenText::gettext(std::ostream& stream, data_map&) {
+    inline void TokenText::gettext(std::ostream& stream, data_map&) const {
         stream << m_text;
     }
 
     // TokenVar
-    inline TokenType TokenVar::gettype() {
+    inline TokenType TokenVar::gettype() const NONIUS_NOEXCEPT {
         return TOKEN_TYPE_VAR;
     }
-    inline void TokenVar::gettext(std::ostream& stream, data_map& data) {
+    inline void TokenVar::gettext(std::ostream& stream, data_map& data) const {
         stream << parse_val(m_key, data)->getvalue();
     }
 
     // TokenFor
-    inline TokenFor::TokenFor(std::string expr) {
+    inline TokenFor::TokenFor(const std::string& expr) {
         std::vector<std::string> elements;
         boost::split(elements, expr, boost::is_space());
         if (elements.size() != 4u) {
             throw TemplateException("Invalid syntax in for statement");
         }
-        m_val = elements[1];
-        m_key = elements[3];
+        m_val = std::move(elements[1]);
+        m_key = std::move(elements[3]);
     }
 
-    inline TokenType TokenFor::gettype() {
+    inline TokenType TokenFor::gettype() const NONIUS_NOEXCEPT {
         return TOKEN_TYPE_FOR;
     }
 
-    inline void TokenFor::gettext(std::ostream& stream, data_map& data) {
+    inline void TokenFor::gettext(std::ostream& stream, data_map& data) const {
         data_ptr value = parse_val(m_key, data);
-        data_list& items = value->getlist();
-        for (size_t i = 0; i < items.size(); ++i) {
+        const data_list& items = value->getlist();
+        for (std::size_t i = 0, i_max = items.size(); i != i_max; ++i) {
             data_map loop;
             loop["index"] = make_data(boost::lexical_cast<std::string>(i + 1));
             loop["index0"] = make_data(boost::lexical_cast<std::string>(i));
-            data["loop"] = make_data(loop);
+            data["loop"] = make_data(std::move(loop));
             data[m_val] = items[i];
-            for (size_t j = 0; j < m_children.size(); ++j) {
+            for (std::size_t j = 0, j_max = m_children.size(); j != j_max; ++j) {
                 m_children[j]->gettext(stream, data);
             }
         }
     }
 
-    inline void TokenFor::set_children(token_vector& children) {
-        m_children.assign(children.begin(), children.end());
+    inline void TokenFor::set_children(token_vector children) {
+        m_children.assign(std::make_move_iterator(children.begin()), std::make_move_iterator(children.end()));
     }
     inline token_vector& TokenFor::get_children() {
         return m_children;
     }
 
     // TokenIf
-    inline TokenType TokenIf::gettype() {
+    inline TokenType TokenIf::gettype() const NONIUS_NOEXCEPT {
         return TOKEN_TYPE_IF;
     }
 
-    inline void TokenIf::gettext(std::ostream& stream, data_map& data) {
+    inline void TokenIf::gettext(std::ostream& stream, data_map& data) const {
         if (is_true(m_expr, data)) {
-            for (size_t j = 0; j < m_children.size(); ++j) {
+            for (std::size_t j = 0, j_max = m_children.size(); j != j_max; ++j) {
                 m_children[j]->gettext(stream, data);
             }
         }
     }
 
-    inline bool TokenIf::is_true(std::string expr, data_map& data) {
+    inline bool TokenIf::is_true(const std::string& expr, data_map& data) const {
         std::vector<std::string> elements;
         boost::split(elements, expr, boost::is_space());
 
@@ -474,25 +475,25 @@ namespace cpptempl {
         return lhs->getvalue() != rhs->getvalue();
     }
 
-    inline void TokenIf::set_children(token_vector& children) {
-        m_children.assign(children.begin(), children.end());
+    inline void TokenIf::set_children(token_vector children) {
+        m_children.assign(std::make_move_iterator(children.begin()), std::make_move_iterator(children.end()));
     }
     inline token_vector& TokenIf::get_children() {
         return m_children;
     }
 
     // TokenEnd
-    inline TokenType TokenEnd::gettype() {
+    inline TokenType TokenEnd::gettype() const NONIUS_NOEXCEPT {
         return m_type == "endfor" ? TOKEN_TYPE_ENDFOR : TOKEN_TYPE_ENDIF;
     }
 
-    inline void TokenEnd::gettext(std::ostream&, data_map&) {
+    inline void TokenEnd::gettext(std::ostream&, data_map&) const {
         throw TemplateException("End-of-control statements have no associated text");
     }
 
     // gettext
     // generic helper for getting text from tokens.
-    inline std::string gettext(token_ptr token, data_map& data) {
+    inline std::string gettext(const token_ptr& token, data_map& data) {
         std::ostringstream stream;
         token->gettext(stream, data);
         return stream.str();
@@ -502,24 +503,24 @@ namespace cpptempl {
     // parse_tree
     // recursively parses list of tokens into a tree
     //////////////////////////////////////////////////////////////////////////
-    inline void parse_tree(token_vector& tokens, token_vector& tree, TokenType until) {
+    inline void parse_tree(token_vector& tokens, token_vector& tree, TokenType const until) {
         while (!tokens.empty()) {
             // 'pops' first item off list
-            token_ptr token = tokens[0];
+            token_ptr token = std::move(tokens[0]);
             tokens.erase(tokens.begin());
 
             if (token->gettype() == TOKEN_TYPE_FOR) {
                 token_vector children;
                 parse_tree(tokens, children, TOKEN_TYPE_ENDFOR);
-                token->set_children(children);
+                token->set_children(std::move(children));
             } else if (token->gettype() == TOKEN_TYPE_IF) {
                 token_vector children;
                 parse_tree(tokens, children, TOKEN_TYPE_ENDIF);
-                token->set_children(children);
+                token->set_children(std::move(children));
             } else if (token->gettype() == until) {
-                return;
+                break;
             }
-            tree.push_back(token);
+            tree.push_back(std::move(token));
         }
     }
 
@@ -529,45 +530,46 @@ namespace cpptempl {
     //////////////////////////////////////////////////////////////////////////
     inline token_vector& tokenize(std::string text, token_vector& tokens) {
         while (!text.empty()) {
-            size_t pos = text.find("{");
-            if (pos == std::string::npos) {
+            std::size_t pos = text.find('{');
+            if (pos == text.npos) {
                 if (!text.empty()) {
-                    tokens.push_back(token_ptr(new TokenText(text)));
+                    tokens.emplace_back(std::make_shared<TokenText>(std::move(text)));
                 }
-                return tokens;
+                break;
             }
-            std::string pre_text = text.substr(0, pos);
-            if (!pre_text.empty()) {
-                tokens.push_back(token_ptr(new TokenText(pre_text)));
+            if (pos > 0) {
+                std::string pre_text = text.substr(0, pos);
+                tokens.emplace_back(std::make_shared<TokenText>(std::move(pre_text)));
             }
-            text = text.substr(pos + 1);
-            if (text.empty()) {
-                tokens.push_back(token_ptr(new TokenText("{")));
-                return tokens;
+            if (pos == text.size() - 1) {
+                tokens.emplace_back(std::make_shared<TokenText>("{"));
+                break;
             }
+            text.erase(0, pos + 1);
 
             // variable
             if (text[0] == '$') {
-                pos = text.find("}");
-                if (pos != std::string::npos) {
-                    tokens.push_back(token_ptr(new TokenVar(text.substr(1, pos - 1))));
-                    text = text.substr(pos + 1);
+                pos = text.find('}');
+                if (pos != text.npos) {
+                    tokens.emplace_back(std::make_shared<TokenVar>(text.substr(1, pos - 1)));
+                    text.erase(0, pos + 1);
                 }
             } else if (text[0] == '%') { // control statement
-                pos = text.find("}");
-                if (pos != std::string::npos) {
+                pos = text.find('}');
+                if (pos != text.npos) {
                     std::string expression = boost::trim_copy(text.substr(1, pos - 2));
-                    text = text.substr(pos + 1);
+                    text.erase(0, pos + 1);
                     if (boost::starts_with(expression, "for")) {
-                        tokens.push_back(token_ptr(new TokenFor(expression)));
+                        tokens.emplace_back(std::make_shared<TokenFor>(std::move(expression)));
                     } else if (boost::starts_with(expression, "if")) {
-                        tokens.push_back(token_ptr(new TokenIf(expression)));
+                        tokens.emplace_back(std::make_shared<TokenIf>(std::move(expression)));
                     } else {
-                        tokens.push_back(token_ptr(new TokenEnd(boost::trim_copy(expression))));
+                        boost::trim(expression);
+                        tokens.emplace_back(std::make_shared<TokenEnd>(std::move(expression)));
                     }
                 }
             } else {
-                tokens.push_back(token_ptr(new TokenText("{")));
+                tokens.emplace_back(std::make_shared<TokenText>("{"));
             }
         }
         return tokens;
@@ -583,16 +585,16 @@ namespace cpptempl {
     ************************************************************************/
     inline std::string parse(std::string templ_text, data_map& data) {
         std::ostringstream stream;
-        parse(stream, templ_text, data);
+        parse(stream, std::move(templ_text), data);
         return stream.str();
     }
     inline void parse(std::ostream& stream, std::string templ_text, data_map& data) {
         token_vector tokens;
-        tokenize(templ_text, tokens);
+        tokenize(std::move(templ_text), tokens);
         token_vector tree;
         parse_tree(tokens, tree);
 
-        for (size_t i = 0; i < tree.size(); ++i) {
+        for (std::size_t i = 0, i_max = tree.size(); i != i_max; ++i) {
             // Recursively calls gettext on each node in the tree.
             // gettext returns the appropriate text for that node.
             // for text, itself;
