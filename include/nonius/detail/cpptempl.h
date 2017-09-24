@@ -76,6 +76,7 @@
 
 #include <memory>
 #include <stdexcept>
+#include <type_traits>
 #include <utility>
 
 #include <cstddef>
@@ -84,6 +85,7 @@ namespace cpptempl {
     // various typedefs
 
     // data classes
+    struct data_map;
     struct Data;
     struct DataValue;
     struct DataList;
@@ -91,7 +93,8 @@ namespace cpptempl {
 
     struct data_ptr {
         data_ptr() {}
-        template<typename T> data_ptr(const T& data) {
+        template<typename T, typename std::enable_if<!std::is_same<T, data_ptr>::value, int>::type = 0>
+        data_ptr(const T& data) {
             this->operator =(data);
         }
         data_ptr(DataValue* data);
@@ -100,7 +103,11 @@ namespace cpptempl {
         data_ptr(const data_ptr& data) {
             ptr = data.ptr;
         }
-        template<typename T> void operator =(const T& data);
+
+        data_ptr& operator =(const data_ptr&);
+        template<typename T, typename std::enable_if<!std::is_same<T, data_ptr>::value, int>::type = 0>
+        void operator =(const T& data);
+
         void push_back(const data_ptr& data);
         virtual ~data_ptr() {}
         Data* operator ->() {
@@ -119,11 +126,9 @@ namespace cpptempl {
         std::unordered_map<std::string, data_ptr> data;
     };
 
-    template<> inline void data_ptr::operator =(const data_ptr& data);
-    template<> void data_ptr::operator =(const std::string& data);
     template<> void data_ptr::operator =(const std::string& data);
     template<> void data_ptr::operator =(const data_map& data);
-    template<typename T>
+    template<typename T, typename std::enable_if<!std::is_same<T, data_ptr>::value, int>::type>
     void data_ptr::operator =(const T& data) {
         std::string data_str = boost::lexical_cast<std::string>(data);
         this->operator =(data_str);
@@ -291,9 +296,9 @@ namespace cpptempl {
     }
 
     // data_ptr
-    template<>
-    inline void data_ptr::operator =(const data_ptr& data) {
+    inline data_ptr& data_ptr::operator =(const data_ptr& data) {
         ptr = data.ptr;
+        return *this;
     }
     template<>
     inline void data_ptr::operator =(const std::string& data) {
