@@ -275,8 +275,8 @@ namespace cpptempl {
 
     std::string gettext(const token_ptr& token, data_map& data);
 
-    void parse_tree(token_vector& tokens, token_vector& tree, TokenType until=TOKEN_TYPE_NONE);
-    token_vector& tokenize(std::string text, token_vector& tokens);
+    token_vector parse_tree(token_vector& tokens, TokenType until=TOKEN_TYPE_NONE);
+    token_vector tokenize(std::string text);
 
     // The big daddy. Pass in the template and data,
     // and get out a completed doc.
@@ -363,7 +363,7 @@ namespace cpptempl {
         }
 
         // check for dotted notation, i.e [foo.bar]
-        std::size_t const index = key.find('.');
+        const std::size_t index = key.find('.');
         if (index == key.npos) {
             if (!data.has(key)) {
                 return make_data("{$" + key + '}');
@@ -371,7 +371,7 @@ namespace cpptempl {
             return data[key];
         }
 
-        std::string const sub_key = key.substr(0, index);
+        const std::string sub_key = key.substr(0, index);
         if (!data.has(sub_key)) {
             return make_data("{$" + key + '}');
         }
@@ -503,32 +503,33 @@ namespace cpptempl {
     // parse_tree
     // recursively parses list of tokens into a tree
     //////////////////////////////////////////////////////////////////////////
-    inline void parse_tree(token_vector& tokens, token_vector& tree, TokenType const until) {
+    inline token_vector parse_tree(token_vector& tokens, const TokenType until) {
+        token_vector tree;
         while (!tokens.empty()) {
             // 'pops' first item off list
             token_ptr token = std::move(tokens[0]);
             tokens.erase(tokens.begin());
 
             if (token->gettype() == TOKEN_TYPE_FOR) {
-                token_vector children;
-                parse_tree(tokens, children, TOKEN_TYPE_ENDFOR);
+                token_vector children = parse_tree(tokens, TOKEN_TYPE_ENDFOR);
                 token->set_children(std::move(children));
             } else if (token->gettype() == TOKEN_TYPE_IF) {
-                token_vector children;
-                parse_tree(tokens, children, TOKEN_TYPE_ENDIF);
+                token_vector children = parse_tree(tokens, TOKEN_TYPE_ENDIF);
                 token->set_children(std::move(children));
             } else if (token->gettype() == until) {
                 break;
             }
             tree.push_back(std::move(token));
         }
+        return tree;
     }
 
     //////////////////////////////////////////////////////////////////////////
     // tokenize
     // parses a template into tokens (text, for, if, variable)
     //////////////////////////////////////////////////////////////////////////
-    inline token_vector& tokenize(std::string text, token_vector& tokens) {
+    inline token_vector tokenize(std::string text) {
+        token_vector tokens;
         while (!text.empty()) {
             std::size_t pos = text.find('{');
             if (pos == text.npos) {
@@ -589,10 +590,8 @@ namespace cpptempl {
         return stream.str();
     }
     inline void parse(std::ostream& stream, std::string templ_text, data_map& data) {
-        token_vector tokens;
-        tokenize(std::move(templ_text), tokens);
-        token_vector tree;
-        parse_tree(tokens, tree);
+        token_vector tokens = tokenize(std::move(templ_text));
+        const token_vector tree = parse_tree(tokens);
 
         for (std::size_t i = 0, i_max = tree.size(); i != i_max; ++i) {
             // Recursively calls gettext on each node in the tree.
