@@ -30,6 +30,8 @@
 #   include <ratio>
 #endif
 
+#include <type_traits>
+
 namespace nonius {
 #ifdef NONIUS_USE_BOOST_CHRONO
     namespace chrono = boost::chrono;
@@ -52,7 +54,11 @@ namespace nonius {
     template <typename Clock>
     using TimePoint = typename Clock::time_point;
 
-    using default_clock = chrono::high_resolution_clock;
+    using default_clock = typename std::conditional<
+        chrono::high_resolution_clock::is_steady,
+        chrono::high_resolution_clock,
+        chrono::steady_clock
+    >::type;
 
     template <typename Clock>
     struct now {
